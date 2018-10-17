@@ -79,7 +79,7 @@ class MysqlManager(Singleton):
             order_by = order_by if order_by[0] != "-" else "{0} desc".format(order_by[1:])
             sql = "{query} order by {order_by}".format(query=sql, order_by=order_by)
 
-        yield from MysqlManager.execute(sql)
+        return MysqlManager.execute(sql)
 
     @staticmethod
     def count(table, conditions=None):
