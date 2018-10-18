@@ -2,7 +2,7 @@ import smtplib, os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
-from compressFile import ZipCompress
+import sys
 
 class MyEmail(object):
     def __init__(self, smtpServer, sender, senderPasswd, receiver=[], charset="utf-8"):
@@ -55,6 +55,8 @@ class MyEmail(object):
         return stderr
 
     def send_dir(self, subject, content, path):
+        sys.path.insert(0,  os.path.dirname(os.path.abspath(__file__)))
+        from compressFile import ZipCompress
         try:
             path = os.path.normcase(os.path.abspath(path))
             filename = "{}.zip".format(path.split(os.sep)[-1])
@@ -74,7 +76,7 @@ if __name__ == "__main__":
     myemail = MyEmail(smtpServer, sender, passWd, receiver)
     # print(myemail.send_email("8折大酬宾", "全场商品一律8折, 快来抢购吧!"))
     # print(myemail.send_file("8折大酬宾", "全场商品一律8折, 快来抢购吧!", "myEmail.py"))
-    print(myemail.send_dir("8折大酬宾", "全场商品一律8折, 快来抢购吧!", "."))
+    # print(myemail.send_dir("8折大酬宾", "全场商品一律8折, 快来抢购吧!", "."))
 
 
 
