@@ -25,9 +25,9 @@ class MysqlManager(Singleton):
                                      passwd=passwd,
                                      db=db, charset=charset, cursorclass=pymysql.cursors.DictCursor)
 
-    @staticmethod
-    def execute(sql):
-        conn = MysqlManager.pool.connection()
+    @classmethod
+    def execute(cls, sql):
+        conn = cls.pool.connection()
         cur = conn.cursor()
 
         try:
@@ -44,8 +44,8 @@ class MysqlManager(Singleton):
             conn.close()
             cur.close()
 
-    @staticmethod
-    def insert(table, **kwargs):
+    @classmethod
+    def insert(cls, table, **kwargs):
         keys = []
         values = []
         for key, value in kwargs.items():
@@ -53,7 +53,7 @@ class MysqlManager(Singleton):
             values.append("'{0}'".format(value) if type(value) not in [int, float] else str(value))
         sql = "insert into {0}({1}) values({2})".format(table, ",".join(keys), ",".join(values))
 
-        conn = MysqlManager.pool.connection()
+        conn = cls.pool.connection()
         cur = conn.cursor()
         rows = 0
 
@@ -68,8 +68,8 @@ class MysqlManager(Singleton):
             cur.close()
         return rows
 
-    @staticmethod
-    def select(table, conditions=None, order_by=None):
+    @classmethod
+    def select(cls, table, conditions=None, order_by=None):
         sql = "select * from {table}".format(table=table)
 
         if conditions:
@@ -79,22 +79,22 @@ class MysqlManager(Singleton):
             order_by = order_by if order_by[0] != "-" else "{0} desc".format(order_by[1:])
             sql = "{query} order by {order_by}".format(query=sql, order_by=order_by)
 
-        return MysqlManager.execute(sql)
+        return cls.execute(sql)
 
-    @staticmethod
-    def count(table, conditions=None):
+    @classmethod
+    def count(cls, table, conditions=None):
         sql = "select count(1) as nums from {table}".format(table=table)
         if conditions:
             sql = "{query} where {conditions}".format(query=sql, conditions=conditions)
-        result = MysqlManager.execute(sql)
+        result = cls.execute(sql)
         for r in result:
             return r.nums
         return 0
 
-    @staticmethod
-    def exist(table, conditions):
+    @classmethod
+    def exist(cls, table, conditions):
         sql = "select 1 as is_exist from {table} where {conditions} limit 1".format(table=table, conditions=conditions)
-        result = MysqlManager.execute(sql)
+        result = cls.execute(sql)
         for r in result:
             return True
         return False
@@ -104,4 +104,4 @@ if __name__ == "__main__":
     mysqldb = MysqlManager(host="localhost")
     rows = mysqldb.select("student")
     for row in rows:
-        pass
+        print(row)

@@ -3,11 +3,11 @@ import chardet
 
 
 class CodeStats:
-    def __init__(self, dirPath=".", fileSuffix=[], ignoreDirs=[], ignoreFiles=[], ignoreNullLine=True):
+    def __init__(self, dirPath:str=".", fileSuffix:list=None, ignoreDirs:list=None, ignoreFiles:list=None, ignoreNullLine:bool=True)->None:
         self.dirPath = os.path.normcase(dirPath)
-        self.fileSuffix = fileSuffix
-        self.ignoreDirs = ignoreDirs
-        self.ignoreFiles = ignoreFiles
+        self.fileSuffix = fileSuffix if fileSuffix else []
+        self.ignoreDirs = ignoreDirs if ignoreDirs else []
+        self.ignoreFiles = ignoreFiles if ignoreFiles else []
         self.ignoreNullLine = ignoreNullLine
         self.totalCount = 0
         self.statsFileNums = 0
