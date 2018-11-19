@@ -31,20 +31,31 @@ class CodeStats:
 
     def stats_line_count(self):
         timeStart = time.time()
+        failure_files = []
         for file in self.get_file_for_path():
             self.statsFileNums += 1
             try:
-                count = self.stats_file(file)
+                #用uft-8编码统计
+                count = self.stats_file(file, encoidng="utf-8")
+            except Exception as e:
+                #用gbk编码统计
+                count = self.stats_file(file, encoidng="gbk")
+            except Exception as e:
+                failure_files.append((file, e))
+            else:
                 print("stats file({0})-->{1}".format(file, count))
                 self.totalCount += count
-            except Exception as e:
-                print("ignore file({0}): {1}".format(file, e))
+
+
+        #最后输入统计失败的文件
+        [print("ignore file:{0}, error{1}".format(failureFile[0], failureFile[1])) for failureFile in failure_files]
+
         timeEnd = time.time()
         print("文件数:{0} 代码行数:{1} 耗时:{2}".format(self.statsFileNums, self.totalCount, timeEnd - timeStart))
 
-    def stats_file(self, file):
+    def stats_file(self, file, encoidng="utf-8"):
         count = 0
-        for line in open(file, "r", encoding="utf-8", errors="replace"):
+        for line in open(file, "r", encoding=encoidng, errors="replace"):
             if not self.ignoreNullLine:
                 count += 1
             elif line[:-1]:
@@ -55,7 +66,7 @@ class CodeStats:
 
 
 if __name__ == "__main__":
-    dirPath = r"F:\git\django_project\novel_site"  # 根目录
+    dirPath = r"/"  # 根目录
     ignoreDirs = [".git", "migrations"]  # 忽略的目录
     fileSuffix = [".py"]  # 统计的文件后缀
     ignoreFiles = []  # 忽略的文件

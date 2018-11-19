@@ -19,10 +19,14 @@ class Singleton(object):
 class MysqlManager(Singleton):
     pool = None
 
-    def __init__(self, host="localhost", port=3306, user="root", passwd="123456", db="mysql", charset="utf8",
+    def __init__(self, host="localhost", port=3306, user="root", password="123456", db="mysql", charset="utf8",
                  max_overflow=10):
-        MysqlManager.pool = PooledDB(creator=pymysql, maxconnections=max_overflow, host=host, port=port, user=user,
-                                     passwd=passwd,
+        self.init_connect_pool(host, port, user, password, db, charset, max_overflow)
+
+    @classmethod
+    def init_connect_pool(cls, host, port, user, password, db, charset, max_overflow):
+        cls.pool = PooledDB(creator=pymysql, maxconnections=max_overflow, host=host, port=port, user=user,
+                                     password=password,
                                      db=db, charset=charset, cursorclass=pymysql.cursors.DictCursor)
 
     @classmethod
@@ -31,12 +35,15 @@ class MysqlManager(Singleton):
         cur = conn.cursor()
 
         try:
-            cur.execute(sql)
+            row_num = cur.execute(sql)
             conn.commit()
-            fields = [filed[0] for filed in cur.description]
-            Record = namedtuple("Record", fields)
-            for record in cur.fetchall():
-                yield Record(**record)
+            records = cur.fetchall()
+            if records:
+                fields = [filed[0] for filed in cur.description]
+                Record = namedtuple("Record", fields)
+                for record in records:
+                    yield Record(**record)
+
         except Exception as e:
             conn.rollback()
             raise RuntimeError("sql[{0}]执行出错:{1}".format(sql, str(e)))
@@ -69,7 +76,7 @@ class MysqlManager(Singleton):
         return rows
 
     @classmethod
-    def select(cls, table, conditions=None, order_by=None):
+    def select(cls, table, conditions=None, order_by=None, limit=None):
         sql = "select * from {table}".format(table=table)
 
         if conditions:
@@ -78,6 +85,9 @@ class MysqlManager(Singleton):
         if order_by:
             order_by = order_by if order_by[0] != "-" else "{0} desc".format(order_by[1:])
             sql = "{query} order by {order_by}".format(query=sql, order_by=order_by)
+
+        if limit:
+            sql = "{query} limit {num}".format(query=sql, num=limit)
 
         return cls.execute(sql)
 
@@ -94,14 +104,18 @@ class MysqlManager(Singleton):
     @classmethod
     def exist(cls, table, conditions):
         sql = "select 1 as is_exist from {table} where {conditions} limit 1".format(table=table, conditions=conditions)
-        result = cls.execute(sql)
-        for r in result:
+        result = list(cls.execute(sql))
+        if result:
             return True
-        return False
+        else:
+            return False
 
 
 if __name__ == "__main__":
     mysqldb = MysqlManager(host="localhost")
-    rows = mysqldb.select("student")
-    for row in rows:
-        print(row)
+    # print(mysqldb.exist("student", conditions="name='ouru'"))
+    # mysqldb.insert("student", name="ouru", age=30, add_time=datetime.now())
+    # rescords = mysqldb.execute("insert into student(name, age, add_time) values('ouru', 28, now())")
+    rescords = mysqldb.execute("select * from student")
+    for r in rescords:
+        print(r)
