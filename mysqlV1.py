@@ -2,6 +2,7 @@ import pymysql
 from DBUtils.PooledDB import PooledDB
 from collections import namedtuple
 from datetime import datetime
+import contextlib
 
 
 class Singleton(object):
@@ -16,6 +17,19 @@ class Singleton(object):
         return Singleton._instance
 
 
+class PoolConnection:
+    def __init__(self, pool):
+        self.connect = pool.connection()
+        self.cursor = self.connect.cursor()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cursor.close()
+        self.connect.close()
+
+
 class MysqlManager(Singleton):
     pool = None
 
@@ -26,30 +40,24 @@ class MysqlManager(Singleton):
     @classmethod
     def init_connect_pool(cls, host, port, user, password, db, charset, max_overflow):
         cls.pool = PooledDB(creator=pymysql, maxconnections=max_overflow, host=host, port=port, user=user,
-                                     password=password,
-                                     db=db, charset=charset, cursorclass=pymysql.cursors.DictCursor)
+                            password=password,
+                            db=db, charset=charset, cursorclass=pymysql.cursors.DictCursor)
 
     @classmethod
     def execute(cls, sql):
-        conn = cls.pool.connection()
-        cur = conn.cursor()
-
-        try:
-            row_num = cur.execute(sql)
-            conn.commit()
-            records = cur.fetchall()
-            if records:
-                fields = [filed[0] for filed in cur.description]
-                Record = namedtuple("Record", fields)
-                for record in records:
-                    yield Record(**record)
-
-        except Exception as e:
-            conn.rollback()
-            raise RuntimeError("sql[{0}]执行出错:{1}".format(sql, str(e)))
-        finally:
-            conn.close()
-            cur.close()
+        with PoolConnection(pool=cls.pool) as p:
+            try:
+                row_num = p.cursor.execute(sql)
+                p.connect.commit()
+                records = p.cursor.fetchall()
+                if records:
+                    fields = [filed[0] for filed in p.cursor.description]
+                    Record = namedtuple("Record", fields)
+                    for record in records:
+                        yield Record(**record)
+            except Exception as e:
+                p.connect.rollback()
+                raise RuntimeError("sql[{0}]执行出错:{1}".format(sql, str(e)))
 
     @classmethod
     def insert(cls, table, **kwargs):
@@ -60,19 +68,14 @@ class MysqlManager(Singleton):
             values.append("'{0}'".format(value) if type(value) not in [int, float] else str(value))
         sql = "insert into {0}({1}) values({2})".format(table, ",".join(keys), ",".join(values))
 
-        conn = cls.pool.connection()
-        cur = conn.cursor()
         rows = 0
-
-        try:
-            rows = cur.execute(sql)
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise RuntimeError("sql[{0}]执行出错:{1}".format(sql, str(e)))
-        finally:
-            conn.close()
-            cur.close()
+        with PoolConnection(cls.pool) as p:
+            try:
+                rows = p.cursor.execute(sql)
+                p.connect.commit()
+            except Exception as e:
+                p.connect.rollback()
+                raise RuntimeError("sql[{0}]执行出错:{1}".format(sql, str(e)))
         return rows
 
     @classmethod
@@ -116,6 +119,6 @@ if __name__ == "__main__":
     # print(mysqldb.exist("student", conditions="name='ouru'"))
     # mysqldb.insert("student", name="ouru", age=30, add_time=datetime.now())
     # rescords = mysqldb.execute("insert into student(name, age, add_time) values('ouru', 28, now())")
-    rescords = mysqldb.execute("select * from student")
+    rescords = mysqldb.execute("select * from studentsss")
     for r in rescords:
         print(r)
