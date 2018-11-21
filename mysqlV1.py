@@ -31,7 +31,7 @@ class PoolConnection:
 
 
 class MysqlManager(Singleton):
-    pool = None
+    _pool = None
 
     def __init__(self, host="localhost", port=3306, user="root", password="123456", db="mysql", charset="utf8",
                  max_overflow=10):
@@ -39,13 +39,14 @@ class MysqlManager(Singleton):
 
     @classmethod
     def init_connect_pool(cls, host, port, user, password, db, charset, max_overflow):
-        cls.pool = PooledDB(creator=pymysql, maxconnections=max_overflow, host=host, port=port, user=user,
-                            password=password,
-                            db=db, charset=charset, cursorclass=pymysql.cursors.DictCursor)
+        if cls._pool is None:
+            cls._pool = PooledDB(creator=pymysql, maxconnections=max_overflow, host=host, port=port, user=user,
+                                password=password,
+                                db=db, charset=charset, cursorclass=pymysql.cursors.DictCursor)
 
     @classmethod
     def execute(cls, sql):
-        with PoolConnection(pool=cls.pool) as p:
+        with PoolConnection(pool=cls._pool) as p:
             try:
                 row_num = p.cursor.execute(sql)
                 p.connect.commit()
@@ -115,10 +116,13 @@ class MysqlManager(Singleton):
 
 
 if __name__ == "__main__":
-    mysqldb = MysqlManager(host="localhost")
+    MysqlManager(host="localhost")
     # print(mysqldb.exist("student", conditions="name='ouru'"))
     # mysqldb.insert("student", name="ouru", age=30, add_time=datetime.now())
     # rescords = mysqldb.execute("insert into student(name, age, add_time) values('ouru', 28, now())")
-    rescords = mysqldb.execute("select * from studentsss")
-    for r in rescords:
-        print(r)
+    rescords = MysqlManager.execute("select * from student")
+    print(list(rescords))
+    print('-'*100)
+    # mysqldb = MysqlManager(host="localhost", db="django_test")
+    rescords = MysqlManager.execute("select * from student")
+    print(list(rescords))
