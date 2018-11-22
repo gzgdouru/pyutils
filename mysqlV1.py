@@ -5,16 +5,27 @@ from datetime import datetime
 import contextlib
 
 
-class Singleton(object):
-    _instance = None
+# class Singleton(object):
+#     _instance = None
+#
+#     def __init__(self):
+#         pass
+#
+#     def __new__(cls, *args, **kwargs):
+#         if Singleton._instance is None:
+#             Singleton._instance = super(Singleton, cls).__new__(cls)
+#         return Singleton._instance
 
-    def __init__(self):
-        pass
 
-    def __new__(cls, *args, **kwargs):
-        if Singleton._instance is None:
-            Singleton._instance = super(Singleton, cls).__new__(cls)
-        return Singleton._instance
+class SingletonMeta(type):
+    def __init__(self, *args, **kwargs):
+        self.__instance = None
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        if self.__instance is None:
+            self.__instance = super().__call__(*args, **kwargs)
+        return self.__instance
 
 
 class PoolConnection:
@@ -30,23 +41,15 @@ class PoolConnection:
         self.connect.close()
 
 
-class MysqlManager(Singleton):
-    _pool = None
-
+class MysqlManager(metaclass=SingletonMeta):
     def __init__(self, host="localhost", port=3306, user="root", password="123456", db="mysql", charset="utf8",
                  max_overflow=10):
-        self.init_connect_pool(host, port, user, password, db, charset, max_overflow)
+        self._pool = PooledDB(creator=pymysql, maxconnections=max_overflow, host=host, port=port, user=user,
+                              password=password,
+                              db=db, charset=charset, cursorclass=pymysql.cursors.DictCursor)
 
-    @classmethod
-    def init_connect_pool(cls, host, port, user, password, db, charset, max_overflow):
-        if cls._pool is None:
-            cls._pool = PooledDB(creator=pymysql, maxconnections=max_overflow, host=host, port=port, user=user,
-                                password=password,
-                                db=db, charset=charset, cursorclass=pymysql.cursors.DictCursor)
-
-    @classmethod
-    def execute(cls, sql):
-        with PoolConnection(pool=cls._pool) as p:
+    def execute(self, sql):
+        with PoolConnection(pool=self._pool) as p:
             try:
                 row_num = p.cursor.execute(sql)
                 p.connect.commit()
@@ -60,8 +63,7 @@ class MysqlManager(Singleton):
                 p.connect.rollback()
                 raise RuntimeError("sql[{0}]执行出错:{1}".format(sql, str(e)))
 
-    @classmethod
-    def insert(cls, table, **kwargs):
+    def insert(self, table, **kwargs):
         keys = []
         values = []
         for key, value in kwargs.items():
@@ -70,7 +72,7 @@ class MysqlManager(Singleton):
         sql = "insert into {0}({1}) values({2})".format(table, ",".join(keys), ",".join(values))
 
         rows = 0
-        with PoolConnection(cls.pool) as p:
+        with PoolConnection(self.pool) as p:
             try:
                 rows = p.cursor.execute(sql)
                 p.connect.commit()
@@ -79,8 +81,7 @@ class MysqlManager(Singleton):
                 raise RuntimeError("sql[{0}]执行出错:{1}".format(sql, str(e)))
         return rows
 
-    @classmethod
-    def select(cls, table, conditions=None, order_by=None, limit=None):
+    def select(self, table, conditions=None, order_by=None, limit=None):
         sql = "select * from {table}".format(table=table)
 
         if conditions:
@@ -93,22 +94,20 @@ class MysqlManager(Singleton):
         if limit:
             sql = "{query} limit {num}".format(query=sql, num=limit)
 
-        return cls.execute(sql)
+        return self.execute(sql)
 
-    @classmethod
-    def count(cls, table, conditions=None):
+    def count(self, table, conditions=None):
         sql = "select count(1) as nums from {table}".format(table=table)
         if conditions:
             sql = "{query} where {conditions}".format(query=sql, conditions=conditions)
-        result = cls.execute(sql)
+        result = self.execute(sql)
         for r in result:
             return r.nums
         return 0
 
-    @classmethod
-    def exist(cls, table, conditions):
+    def exist(self, table, conditions):
         sql = "select 1 as is_exist from {table} where {conditions} limit 1".format(table=table, conditions=conditions)
-        result = list(cls.execute(sql))
+        result = list(self.execute(sql))
         if result:
             return True
         else:
@@ -116,13 +115,13 @@ class MysqlManager(Singleton):
 
 
 if __name__ == "__main__":
-    MysqlManager(host="localhost")
+    mysqldb = MysqlManager(host="localhost")
     # print(mysqldb.exist("student", conditions="name='ouru'"))
     # mysqldb.insert("student", name="ouru", age=30, add_time=datetime.now())
     # rescords = mysqldb.execute("insert into student(name, age, add_time) values('ouru', 28, now())")
-    rescords = MysqlManager.execute("select * from student")
+    rescords = mysqldb.execute("select * from student")
     print(list(rescords))
-    print('-'*100)
-    # mysqldb = MysqlManager(host="localhost", db="django_test")
-    rescords = MysqlManager.execute("select * from student")
+    print('-' * 100)
+    mysqldb = MysqlManager(host="localhost", db="django_test")
+    rescords = mysqldb.execute("select * from student")
     print(list(rescords))
