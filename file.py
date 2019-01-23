@@ -4,17 +4,14 @@ import os
 def read_big_file(file, size=10240, delimiter="\n"):
     '''大文件读取'''
     buf = ""
-    with open(file) as f:
-        while True:
+    with open(file, encoding="utf-8") as f:
+        for chunk in iter(lambda: f.read(size), ''):
+            buf += chunk
             while delimiter in buf:
                 pos = buf.index(delimiter)
                 yield buf[:pos]
                 buf = buf[pos + len(delimiter):]
-            chunk = f.read(size)
-            if not chunk:
-                yield buf
-                break
-            buf += chunk
+        yield buf
 
 
 def single_file_rename(file, srcStr, dstStr, isPrint=True):
@@ -41,9 +38,9 @@ def batch_file_rename(dirpath, srcStr, dstStr, isTree=True, isPrint=True):
 
 
 if __name__ == "__main__":
-    # for lineno, line in enumerate(read_big_file("input.txt")):
-    #     print("{0}:{1}".format(lineno + 1, line))
+    for lineno, line in enumerate(read_big_file("file.py")):
+        print("{0}:{1}".format(lineno + 1, line))
 
-    # single_file_rename(r'F:\test\marrow_bk\attr_desc.py', ".py", ".txt")
+        # single_file_rename(r'F:\test\marrow_bk\attr_desc.py', ".py", ".txt")
 
-    batch_file_rename(r'F:\git_python_bk', ".txt", ".py")
+        # batch_file_rename(r'F:\git_python_bk', ".txt", ".py")
