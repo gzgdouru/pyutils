@@ -31,25 +31,11 @@ class CodeStats:
 
     def stats_line_count(self):
         timeStart = time.time()
-        failure_files = []
         for file in self.get_file_for_path():
             self.statsFileNums += 1
-            try:
-                #用uft-8编码统计
-                count = self.stats_file(file, encoidng="utf-8")
-            except Exception as e:
-                #用gbk编码统计
-                count = self.stats_file(file, encoidng="gbk")
-            except Exception as e:
-                failure_files.append((file, e))
-            else:
-                print("stats file({0})-->{1}".format(file, count))
-                self.totalCount += count
-
-
-        #最后输入统计失败的文件
-        [print("ignore file:{0}, error{1}".format(failureFile[0], failureFile[1])) for failureFile in failure_files]
-
+            count = self.stats_file(file)
+            print("stats file({0})-->{1}".format(file, count))
+            self.totalCount += count
         timeEnd = time.time()
         print("文件数:{0} 代码行数:{1} 耗时:{2}".format(self.statsFileNums, self.totalCount, timeEnd - timeStart))
 

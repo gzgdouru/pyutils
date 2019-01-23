@@ -1,8 +1,6 @@
 import pymysql
 from DBUtils.PooledDB import PooledDB
 from collections import namedtuple
-from datetime import datetime
-import contextlib
 
 
 # class Singleton(object):
