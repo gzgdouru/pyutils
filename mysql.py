@@ -1,6 +1,7 @@
 import pymysql
 from DBUtils.PooledDB import PooledDB
 from collections import namedtuple
+from datetime import datetime
 
 
 # class Singleton(object):
@@ -46,11 +47,10 @@ class MysqlManager(metaclass=SingletonMeta):
                               password=password,
                               db=db, charset=charset, cursorclass=pymysql.cursors.DictCursor)
 
-    def execute(self, sql):
+    def execute(self, sql, args=None):
         with PoolConnection(pool=self._pool) as p:
             try:
-                row_num = p.cursor.execute(sql)
-                p.connect.commit()
+                p.cursor.execute(sql, args)
                 records = p.cursor.fetchall()
                 if records:
                     fields = [filed[0] for filed in p.cursor.description]
@@ -59,24 +59,21 @@ class MysqlManager(metaclass=SingletonMeta):
                         yield Record(**record)
             except Exception as e:
                 p.connect.rollback()
-                raise RuntimeError("sql[{0}]执行出错:{1}".format(sql, str(e)))
+                raise RuntimeError("[sql:{}, args:{}]语句执行出错:{}".format(sql, args, e))
 
     def insert(self, table, **kwargs):
-        keys = []
-        values = []
-        for key, value in kwargs.items():
-            keys.append(key)
-            values.append("'{0}'".format(value) if type(value) not in [int, float] else str(value))
-        sql = "insert into {0}({1}) values({2})".format(table, ",".join(keys), ",".join(values))
+        sql = "insert into {table}({keys}) values({values})".format(table=table, keys=",".join(kwargs.keys()),
+                                                                    values=",".join(
+                                                                        ["%s" for i in range(len(kwargs.values()))]))
 
         rows = 0
-        with PoolConnection(self.pool) as p:
+        with PoolConnection(pool=self._pool) as p:
             try:
-                rows = p.cursor.execute(sql)
+                rows = p.cursor.execute(sql, tuple(kwargs.values()))
                 p.connect.commit()
             except Exception as e:
                 p.connect.rollback()
-                raise RuntimeError("sql[{0}]执行出错:{1}".format(sql, str(e)))
+                raise RuntimeError("[sql:{}, args:{}]语句执行出错:{}".format(sql, tuple(kwargs.values()), e))
         return rows
 
     def select(self, table, conditions=None, order_by=None, limit=None):
@@ -115,11 +112,9 @@ class MysqlManager(metaclass=SingletonMeta):
 if __name__ == "__main__":
     mysqldb = MysqlManager(host="localhost")
     # print(mysqldb.exist("student", conditions="name='ouru'"))
+
     # mysqldb.insert("student", name="ouru", age=30, add_time=datetime.now())
-    # rescords = mysqldb.execute("insert into student(name, age, add_time) values('ouru', 28, now())")
-    rescords = mysqldb.execute("select * from student")
-    print(list(rescords))
-    print('-' * 100)
-    mysqldb = MysqlManager(host="localhost", db="django_test")
-    rescords = mysqldb.execute("select * from student")
+
+    rescords = mysqldb.execute("select * from student where name=%s and age=%s", args=("ouru", 22, 23))
+    # rescords = mysqldb.execute("select * from student where name='ouru'")
     print(list(rescords))
