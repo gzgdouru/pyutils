@@ -33,6 +33,6 @@ def port_check(host, ports, timeout=3, workers=5):
 
 
 if __name__ == "__main__":
-    ports = range(9000, 9020)
+    ports = range(9000, 9999)
     valid_port = port_check("172.16.34.16", ports)
     print(list(valid_port))

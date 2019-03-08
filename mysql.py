@@ -2,6 +2,9 @@ import pymysql
 from DBUtils.PooledDB import PooledDB
 from collections import namedtuple
 from datetime import datetime
+from contextlib import contextmanager
+
+Pool = namedtuple("Pool", ["connect", "cursor"])
 
 
 # class Singleton(object):
@@ -40,6 +43,21 @@ class PoolConnection:
         self.connect.close()
 
 
+@contextmanager
+def get_pool_connection(pool):
+    connect = pool.connection()
+    cursor = connect.cursor()
+    try:
+        yield Pool(connect, cursor)
+        connect.commit()
+    except Exception as e:
+        connect.rollback()
+        raise RuntimeError(str(e))
+    finally:
+        cursor.close()
+        connect.close()
+
+
 class MysqlManager(metaclass=SingletonMeta):
     def __init__(self, host="localhost", port=3306, user="root", password="123456", db="mysql", charset="utf8",
                  max_overflow=10):
@@ -48,7 +66,7 @@ class MysqlManager(metaclass=SingletonMeta):
                               db=db, charset=charset, cursorclass=pymysql.cursors.DictCursor)
 
     def execute(self, sql, args=None):
-        with PoolConnection(pool=self._pool) as p:
+        with get_pool_connection(pool=self._pool) as p:
             try:
                 p.cursor.execute(sql, args)
                 records = p.cursor.fetchall()
@@ -115,6 +133,6 @@ if __name__ == "__main__":
 
     # mysqldb.insert("student", name="ouru", age=30, add_time=datetime.now())
 
-    rescords = mysqldb.execute("select * from student where name=%s and age=%s", args=("ouru", 22, 23))
+    rescords = mysqldb.execute("select * from student where name=%s", args=("ouru",))
     # rescords = mysqldb.execute("select * from student where name='ouru'")
     print(list(rescords))
