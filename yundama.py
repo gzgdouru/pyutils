@@ -69,4 +69,4 @@ if __name__ == "__main__":
     # print(ydm.decode("11.jpg", codetype=2000))
     # print(ydm.decode("4.png"))
     # print(ydm.decode("fucklaji.png", codetype=2004))
-    print(ydm.decode("ex.png", codetype=4006))
+    print(ydm.decode("login_20190404084639.png", codetype=4006))

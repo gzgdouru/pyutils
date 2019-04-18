@@ -52,9 +52,9 @@ class CodeStats:
 
 
 if __name__ == "__main__":
-    dirPath = r"/"  # 根目录
+    dirPath = r"F:\git_python\dice"  # 根目录
     ignoreDirs = [".git", "migrations"]  # 忽略的目录
-    fileSuffix = [".py"]  # 统计的文件后缀
+    fileSuffix = [".py", ".html"]  # 统计的文件后缀
     ignoreFiles = []  # 忽略的文件
 
     codeStat = CodeStats(dirPath=dirPath, fileSuffix=fileSuffix, ignoreDirs=ignoreDirs, ignoreFiles=ignoreFiles,
